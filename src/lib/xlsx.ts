@@ -2,8 +2,16 @@ import ExcelJS from "exceljs";
 import type { CellValue, FieldSchema, Row, TableSchema } from "./schemas";
 import { getColumns } from "./schemas";
 import { boldRuns } from "./utils";
+import { styleSheet } from "./xlsx-style";
 
 export const fileName = (table: TableSchema) => `${table.name}.xlsx`;
+
+/** Fingerprint of the schema, stored in the file properties to detect schema changes. */
+function schemaSignature(table: TableSchema) {
+  let hash = 5381;
+  for (const char of JSON.stringify(getColumns(table))) hash = Math.imul(hash, 33) ^ char.charCodeAt(0);
+  return `schema:${(hash >>> 0).toString(36)}`;
+}
 
 export async function fileExists(dir: FileSystemDirectoryHandle, name: string) {
   try {
@@ -14,39 +22,59 @@ export async function fileExists(dir: FileSystemDirectoryHandle, name: string) {
   }
 }
 
+/**
+ * Column order of the file plus values of columns unknown to the schema,
+ * kept by row id so they survive rewrites untouched.
+ */
+export type SheetLayout = {
+  headers: string[];
+  extras: Map<number, Record<string, ExcelJS.CellValue>>;
+};
+
 /** Reads a table file; headers are matched by name, missing ids are assigned. */
-export async function readTable(
-  dir: FileSystemDirectoryHandle,
-  table: TableSchema,
-): Promise<Row[]> {
+export async function readTable(dir: FileSystemDirectoryHandle, table: TableSchema) {
   const file = await (await dir.getFileHandle(fileName(table))).getFile();
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(await file.arrayBuffer());
   const sheet = workbook.getWorksheet(table.name) ?? workbook.worksheets[0];
-  if (!sheet) return [];
 
   const headers = new Map<string, number>();
-  sheet.getRow(1).eachCell((cell, col) => {
-    headers.set(cellText(cell.value).trim(), col);
+  sheet?.getRow(1).eachCell((cell, col) => {
+    const header = cellText(cell.value).trim();
+    if (header && !headers.has(header)) headers.set(header, col);
   });
 
   const columns = getColumns(table);
-  const rows: Row[] = [];
-  for (let r = 2; r <= sheet.rowCount; r++) {
+  const extraHeaders = [...headers.keys()].filter((h) => !columns.some((c) => c.name === h));
+  const entries: { row: Row; extra: Record<string, ExcelJS.CellValue> }[] = [];
+  for (let r = 2; sheet && r <= sheet.rowCount; r++) {
     const excelRow = sheet.getRow(r);
+    const raw = (header: string) => {
+      const col = headers.get(header);
+      return col ? excelRow.getCell(col).value : null;
+    };
     const row = Object.fromEntries(
-      columns.map((column) => {
-        const col = headers.get(column.name);
-        const raw = col ? excelRow.getCell(col).value : null;
-        return [column.name, fromCell(raw, column)];
-      }),
+      columns.map((column) => [column.name, fromCell(raw(column.name), column)]),
     ) as Row;
-    if (columns.some((column) => !isEmpty(row[column.name]))) rows.push(row);
+    const extra = Object.fromEntries(extraHeaders.map((header) => [header, raw(header)]));
+    const hasData =
+      columns.some((column) => !isEmpty(row[column.name])) ||
+      extraHeaders.some((header) => cellText(extra[header]) !== "");
+    if (hasData) entries.push({ row, extra });
   }
 
-  let nextId = Math.max(0, ...rows.map((row) => row.id ?? 0)) + 1;
-  for (const row of rows) if (!row.id) row.id = nextId++;
-  return rows;
+  let nextId = Math.max(0, ...entries.map(({ row }) => row.id ?? 0)) + 1;
+  for (const { row } of entries) if (!row.id) row.id = nextId++;
+
+  const layout: SheetLayout = {
+    headers: mergeHeaders([...headers.keys()], columns),
+    extras: new Map(entries.map(({ row, extra }) => [row.id, extra])),
+  };
+  // Rewrite when a column is missing or the schema changed (options, colors, types…).
+  const outdated =
+    columns.some((column) => !headers.has(column.name)) ||
+    workbook.keywords !== schemaSignature(table);
+  return { rows: entries.map(({ row }) => row), layout, outdated };
 }
 
 /** Rewrites the whole file as a single Excel table starting at A1. */
@@ -54,35 +82,56 @@ export async function writeTable(
   dir: FileSystemDirectoryHandle,
   table: TableSchema,
   rows: Row[],
+  layout?: SheetLayout,
 ) {
   const columns = getColumns(table);
+  const headers = mergeHeaders(layout?.headers ?? [], columns);
+  const columnOf = (header: string) => columns.find((column) => column.name === header);
   const workbook = new ExcelJS.Workbook();
+  workbook.keywords = schemaSignature(table);
   const sheet = workbook.addWorksheet(table.name);
 
   sheet.addTable({
     name: table.name.replace(/\W/g, "_"),
     ref: "A1",
     headerRow: true,
-    style: { theme: "TableStyleLight1", showRowStripes: true },
-    columns: columns.map((column) => ({ name: column.name, filterButton: true })),
+    // Light1 without stripes: no body fill; header fill and outer border come from styleSheet.
+    style: { theme: "TableStyleLight1", showRowStripes: false },
+    columns: headers.map((name) => ({ name, filterButton: true })),
     // An Excel table needs at least one data row to stay valid.
     rows: rows.length
-      ? rows.map((row) => columns.map((column) => toCell(row[column.name], column)))
-      : [columns.map(() => null)],
+      ? rows.map((row) =>
+          headers.map((header) => {
+            const column = columnOf(header);
+            return column
+              ? toCell(row[header], column)
+              : (layout?.extras.get(row.id)?.[header] ?? null);
+          }),
+        )
+      : [headers.map(() => null)],
   });
 
-  columns.forEach((column, index) => {
-    const excelColumn = sheet.getColumn(index + 1);
-    excelColumn.width = column.name === "id" ? 8 : column.dataType === "text" ? 60 : 24;
-    excelColumn.alignment = { vertical: "top", wrapText: column.dataType === "text" };
-    if (column.dataType === "date") excelColumn.numFmt = "yyyy-mm-dd";
-  });
+  styleSheet(sheet, headers, columnOf, rows.length);
 
   const buffer = await workbook.xlsx.writeBuffer();
   const handle = await dir.getFileHandle(fileName(table), { create: true });
   const writable = await handle.createWritable();
   await writable.write(buffer);
   await writable.close();
+}
+
+/** Keeps the file's column order and inserts missing schema columns right after their schema predecessor. */
+function mergeHeaders(existing: string[], columns: FieldSchema[]) {
+  const headers = [...existing];
+  columns.forEach((column, index) => {
+    if (headers.includes(column.name)) return;
+    const previous = columns
+      .slice(0, index)
+      .reverse()
+      .find((other) => headers.includes(other.name));
+    headers.splice(previous ? headers.indexOf(previous.name) + 1 : 0, 0, column.name);
+  });
+  return headers;
 }
 
 const isEmpty = (value: CellValue) =>

@@ -1,5 +1,6 @@
 import type { CellValue, FieldSchema, Row, TableSchema } from "./schemas";
 import { getColumns } from "./schemas";
+import type { SheetLayout } from "./xlsx";
 import { fileExists, fileName, readTable, writeTable } from "./xlsx";
 
 type RowInput = Record<string, unknown>;
@@ -10,6 +11,7 @@ type RowInput = Record<string, unknown>;
  */
 export class Database {
   private data = new Map<string, Row[]>();
+  private layouts = new Map<string, SheetLayout>();
   private listeners = new Set<() => void>();
   private writes = Promise.resolve();
 
@@ -18,12 +20,15 @@ export class Database {
     readonly tables: TableSchema[],
   ) {}
 
-  /** Creates missing files, then loads every table. */
+  /** Creates missing files, loads every table and rewrites files whose schema is outdated. */
   async load() {
     for (const table of this.tables) {
       if (!(await fileExists(this.dir, fileName(table))))
         await writeTable(this.dir, table, []);
-      this.data.set(table.name, await readTable(this.dir, table));
+      const { rows, layout, outdated } = await readTable(this.dir, table);
+      this.data.set(table.name, rows);
+      this.layouts.set(table.name, layout);
+      if (outdated) await writeTable(this.dir, table, rows, layout);
     }
     this.emit();
   }
@@ -71,6 +76,8 @@ export class Database {
     const missing = ids.filter((id) => !this.rows(name).some((row) => row.id === id));
     if (missing.length) throw new Error(`Row ids ${missing.join(", ")} not found`);
     await this.commit(table, this.rows(name).filter((row) => !ids.includes(row.id)));
+    // Ids can be reused later: drop the preserved extra cells of deleted rows.
+    for (const id of ids) this.layouts.get(name)?.extras.delete(id);
   }
 
   private async commit(table: TableSchema, rows: Row[]) {
@@ -82,7 +89,9 @@ export class Database {
     }
     this.data.set(table.name, rows);
     this.emit();
-    const write = this.writes.then(() => writeTable(this.dir, table, rows));
+    const write = this.writes.then(() =>
+      writeTable(this.dir, table, rows, this.layouts.get(table.name)),
+    );
     this.writes = write.catch(() => {});
     await write;
   }

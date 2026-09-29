@@ -1,5 +1,7 @@
 import type { FieldSchema, Row, TableSchema } from "@/lib/schemas";
+import { getColumns } from "@/lib/schemas";
 import { cn } from "@/lib/utils";
+import { ImagePreview } from "@/components/image-preview";
 import { OptionValues } from "@/components/select-option";
 
 const VISIBLE = ["string", "option", "image"];
@@ -15,7 +17,9 @@ export function RowList({
   selectedId?: number;
   onSelect: (id: number) => void;
 }) {
-  const columns = table.columns.filter((column) => VISIBLE.includes(column.dataType));
+  const columns = getColumns(table).filter(
+    (column) => column.name === "id" || VISIBLE.includes(column.dataType),
+  );
 
   return (
     <table className="w-full border-separate border-spacing-0 text-[13px]">
@@ -39,12 +43,13 @@ export function RowList({
             data-selected={row.id === selectedId}
             className="group cursor-default transition-colors hover:bg-muted/60 data-[selected=true]:bg-primary/8"
           >
-            {columns.map((column, index) => (
+            {columns.map((column) => (
               <td
                 key={column.name}
                 className={cn(
                   "max-w-72 truncate border-b border-border/60 px-4 py-2.5",
-                  index === 0 && "font-medium",
+                  column.name === "id" && "w-12 pr-0 text-muted-foreground tabular-nums",
+                  column.name === "name" && "font-medium",
                 )}
               >
                 <Cell column={column} value={row[column.name]} />
@@ -60,8 +65,6 @@ export function RowList({
 function Cell({ column, value }: { column: FieldSchema; value: unknown }) {
   if (column.dataType === "option") return <OptionValues column={column} value={value} />;
   if (column.dataType === "image")
-    return value ? (
-      <img src={String(value)} alt="" className="size-7 rounded-md object-cover ring-1 ring-border" />
-    ) : null;
+    return value ? <ImagePreview value={String(value)} className="size-7" /> : null;
   return <>{[value].flat().filter(Boolean).join(", ")}</>;
 }

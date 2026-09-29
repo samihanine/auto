@@ -3,7 +3,7 @@ import { PanelLeftOpenIcon, SettingsIcon, TableIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { agents, findAgent } from "@/agents";
 import type { Database } from "@/lib/crud-table";
-import { useRows, useSettings } from "@/lib/hooks";
+import { DatabaseContext, useRows, useSettings } from "@/lib/hooks";
 import type { TableSchema } from "@/lib/schemas";
 import { useDefaultLayout, usePanelRef } from "react-resizable-panels";
 import { errorMessage } from "@/lib/utils";
@@ -22,7 +22,15 @@ import { toast } from "@/components/ui/toast";
 
 export const Route = createFileRoute("/")({
   ssr: false,
-  component: () => <FolderGate>{(db) => <Workspace db={db} />}</FolderGate>,
+  component: () => (
+    <FolderGate>
+      {(db) => (
+        <DatabaseContext value={db}>
+          <Workspace db={db} />
+        </DatabaseContext>
+      )}
+    </FolderGate>
+  ),
 });
 
 function Workspace({ db }: { db: Database }) {

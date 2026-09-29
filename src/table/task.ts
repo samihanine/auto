@@ -55,6 +55,10 @@ export const taskTable = tableSchema.decode({
       ],
     },
     {
+      name: "image",
+      dataType: "image",
+    },
+    {
       name: "createdAt",
       dataType: "date",
     },

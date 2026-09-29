@@ -33,6 +33,8 @@ export const settingsSchema = z.object({
   agent: z.string().default(""),
   // Active conversation id per agent name.
   conversations: z.record(z.string(), z.string()).default({}),
+  // Absolute path of the workspace folder, used to store full image paths in Excel.
+  workspacePath: z.string().default(""),
 });
 
 export type SettingsSchema = z.infer<typeof settingsSchema>;

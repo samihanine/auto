@@ -1,4 +1,4 @@
-import { ImageIcon, Trash2Icon } from "lucide-react";
+import { Trash2Icon } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { CellValue, FieldSchema, Row, TableSchema } from "@/lib/schemas";
 import { cn, errorMessage } from "@/lib/utils";
@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/toast";
 import { OptionSelect } from "@/components/select-option";
 import { RichText } from "@/components/rich-text";
+import { UploadImageInput } from "@/components/upload-image-input";
 
 type Values = Record<string, CellValue>;
 
@@ -148,18 +149,7 @@ function FieldInput({
         <Textarea value={text} onChange={(e) => onChange(e.target.value)} className="font-mono text-xs" />
       );
     case "image":
-      return (
-        <div className="flex flex-col gap-2">
-          {input({ type: "url", placeholder: "Paste an image URL" })}
-          <div className="grid aspect-video place-items-center overflow-hidden rounded-xl bg-muted ring-1 ring-border/60">
-            {text ? (
-              <img src={text} alt="" className="size-full object-cover" />
-            ) : (
-              <ImageIcon className="size-5 text-muted-foreground/60" />
-            )}
-          </div>
-        </div>
-      );
+      return <UploadImageInput value={value ? String(value) : null} onChange={onChange} />;
     default:
       return input({ type: column.dataType === "url" ? "url" : "text" });
   }

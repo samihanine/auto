@@ -70,6 +70,18 @@ function Settings() {
             Change…
           </Button>
         </div>
+        <label className="flex flex-col gap-1.5">
+          <span className="text-xs text-muted-foreground">
+            Absolute path of this folder — browsers can’t read it, it’s used to write full image paths in Excel.
+          </span>
+          <Input
+            placeholder="/Users/me/Documents/workspace"
+            defaultValue={settings.workspacePath}
+            key={settings.workspacePath}
+            onBlur={(e) => void updateSettings({ workspacePath: e.target.value.trim() })}
+            className="rounded-xl font-mono text-xs"
+          />
+        </label>
       </Section>
     </div>
   );
