@@ -1,0 +1,32 @@
+# Dependencies
+node_modules
+
+# Builds
+dist
+.output
+.vinxi
+.tanstack
+
+# Local dumps (scripts/dump-src.ts)
+.local
+
+# Vite / TypeScript
+*.tsbuildinfo
+.vite
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Logs and caches
+*.log
+.eslintcache
+.prettiercache
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea
+*.swp
+*.swo
