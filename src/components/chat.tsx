@@ -39,7 +39,7 @@ export function Chat({ agent, db, onClose }: { agent: AgentSchema; db: Database;
   });
   const { data: messages = [] } = useQuery({
     queryKey: ["messages", conversationId],
-    queryFn: () => getMessages({ conversationId: conversationId! }),
+    queryFn: () => getMessages({ conversationId: conversationId }),
     enabled: !!conversationId,
   });
   const visible = conversationId ? messages : [];
@@ -94,7 +94,7 @@ export function Chat({ agent, db, onClose }: { agent: AgentSchema; db: Database;
         <Combobox
           items={conversations}
           value={current}
-          onValueChange={(value) => selectConversation((value as ConversationSchema | null)?.id)}
+          onValueChange={(value) => selectConversation((value)?.id)}
           itemToStringLabel={(item: ConversationSchema) => item.title}
           isItemEqualToValue={(a: ConversationSchema, b: ConversationSchema) => a.id === b.id}
         >
@@ -163,9 +163,9 @@ export function Chat({ agent, db, onClose }: { agent: AgentSchema; db: Database;
       </div>
 
       <div className="p-3 pt-0">
-        {!settings.openaiKey && (
+        {!settings.aiKey && (
           <p className="mb-2 px-1 text-xs text-muted-foreground">
-            Add your OpenAI key in{" "}
+            Add your AI key in{" "}
             <Link to="/settings" className="text-primary underline-offset-2 hover:underline">
               Settings
             </Link>{" "}

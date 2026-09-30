@@ -1,20 +1,26 @@
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
-import { ChevronLeftIcon } from "lucide-react";
+import { DatabaseIcon, FileBarChartIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getSavedFolder, pickFolder } from "@/lib/folder";
 import { useSettings } from "@/lib/hooks";
+import { isTokenExpired, tokenAge, tokenClaims } from "@/lib/pbi-auth";
 import { errorMessage } from "@/lib/utils";
+import { PageShell, Section } from "@/components/page-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast";
 
 export const Route = createFileRoute("/settings")({
   ssr: false,
+  // `bun run pbi-token` opens /settings?pbiToken=… to hand over a fresh Power BI token.
+  validateSearch: (search: Record<string, unknown>): { pbiToken?: string } =>
+    typeof search.pbiToken === "string" ? { pbiToken: search.pbiToken } : {},
   component: Settings,
 });
 
 function Settings() {
   const navigate = useNavigate();
+  const { pbiToken } = Route.useSearch();
   const [settings, updateSettings] = useSettings();
   const [key, setKey] = useState<string>();
   const [folder, setFolder] = useState<string>();
@@ -22,6 +28,14 @@ function Settings() {
   useEffect(() => {
     void getSavedFolder().then((handle) => setFolder(handle?.name));
   }, []);
+
+  useEffect(() => {
+    if (!pbiToken) return;
+    void updateSettings({ pbiToken, pbiTokenAt: Date.now() }).then(() => {
+      toast.add({ title: "Power BI token saved", type: "success" });
+      void navigate({ to: "/settings", search: {}, replace: true });
+    });
+  }, [pbiToken, updateSettings, navigate]);
 
   const changeFolder = async () => {
     try {
@@ -33,34 +47,57 @@ function Settings() {
     }
   };
 
-  return (
-    <div className="mx-auto flex max-w-xl flex-col gap-8 px-6 py-10">
-      <div>
-        <Button variant="ghost" size="sm" className="-ml-2" nativeButton={false} render={<Link to="/" />}>
-          <ChevronLeftIcon /> Back
-        </Button>
-        <h1 className="mt-3 text-2xl font-semibold tracking-tight">Settings</h1>
-      </div>
+  const minutes = Math.round(tokenAge(settings.pbiTokenAt) / 60_000);
+  const user = settings.pbiToken ? tokenClaims(settings.pbiToken).upn : undefined;
 
-      <Section title="OpenAI API key" description="Stored locally in this browser, used only to call the OpenAI API.">
+  return (
+    <PageShell title="Settings">
+      <Section title="AI key" description="Stored locally in this browser, sent only to the AI provider.">
         <form
           className="flex gap-2"
           onSubmit={async (e) => {
             e.preventDefault();
-            await updateSettings({ openaiKey: (key ?? settings.openaiKey).trim() });
-            toast.add({ title: "API key saved", type: "success" });
+            await updateSettings({ aiKey: (key ?? settings.aiKey).trim() });
+            toast.add({ title: "AI key saved", type: "success" });
           }}
         >
           <Input
             type="password"
             autoComplete="off"
             placeholder="sk-…"
-            value={key ?? settings.openaiKey}
+            value={key ?? settings.aiKey}
             onChange={(e) => setKey(e.target.value)}
             className="rounded-xl"
           />
           <Button type="submit">Save</Button>
         </form>
+      </Section>
+
+      <Section
+        title="Power BI"
+        description="Sign in once with a device code, then each run refreshes the token and opens this page to save it."
+      >
+        <div className="flex items-center gap-3 rounded-xl border px-4 py-3 text-sm">
+          <span
+            className={`size-2 shrink-0 rounded-full ${!settings.pbiToken ? "bg-neutral-300" : isTokenExpired(settings.pbiTokenAt) ? "bg-amber-500" : "bg-green-500"}`}
+          />
+          <span className="min-w-0 flex-1 truncate">
+            {!settings.pbiToken
+              ? "Not connected"
+              : isTokenExpired(settings.pbiTokenAt)
+                ? `Token expired (${minutes} min ago)`
+                : `Connected${user ? ` as ${user}` : ""} · ${minutes} min ago`}
+          </span>
+        </div>
+        <code className="rounded-lg bg-muted px-3 py-2 font-mono text-xs">bun run pbi-token</code>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" nativeButton={false} render={<Link to="/import-dataset" />}>
+            <DatabaseIcon /> Import a dataset
+          </Button>
+          <Button variant="outline" size="sm" nativeButton={false} render={<Link to="/import-report" />}>
+            <FileBarChartIcon /> Import a report
+          </Button>
+        </div>
       </Section>
 
       <Section title="Workspace folder" description="Folder holding one Excel file per table.">
@@ -83,18 +120,6 @@ function Settings() {
           />
         </label>
       </Section>
-    </div>
-  );
-}
-
-function Section({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
-  return (
-    <section className="flex flex-col gap-3">
-      <div>
-        <h2 className="text-sm font-medium">{title}</h2>
-        <p className="text-xs text-muted-foreground">{description}</p>
-      </div>
-      {children}
-    </section>
+    </PageShell>
   );
 }

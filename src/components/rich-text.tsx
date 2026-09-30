@@ -3,7 +3,15 @@ import { useLayoutEffect, useRef } from "react";
 import { boldRuns } from "@/lib/utils";
 
 /** Minimal editor: line breaks and bold only, stored as "text with **bold**". */
-export function RichText({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+export function RichText({
+  value,
+  onChange,
+  readOnly = false,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  readOnly?: boolean;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const last = useRef<string | null>(null);
 
@@ -24,6 +32,7 @@ export function RichText({ value, onChange }: { value: string; onChange: (value:
 
   return (
     <div className="rounded-xl border border-input bg-input/30 transition-colors focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50">
+      {!readOnly && (
       <div className="flex border-b border-input/70 px-1.5 py-1">
         <button
           type="button"
@@ -37,9 +46,10 @@ export function RichText({ value, onChange }: { value: string; onChange: (value:
           <BoldIcon className="size-3.5" />
         </button>
       </div>
+      )}
       <div
         ref={ref}
-        contentEditable
+        contentEditable={!readOnly}
         suppressContentEditableWarning
         onInput={emit}
         onKeyDown={(e) => {
@@ -85,4 +95,13 @@ function fromHtml(root: HTMLElement) {
     return inner;
   };
   return walk(root, false).replace(/\*\*\*\*/g, "").replace(/\n+$/, "");
+}
+
+/** Read-only rendering of a "text with **bold**" value. */
+export function RichTextView({ value, className }: { value: string; className?: string }) {
+  return (
+    <p className={className} style={{ whiteSpace: "pre-line" }}>
+      {boldRuns(value).map((run, i) => (run.bold ? <b key={i}>{run.text}</b> : <span key={i}>{run.text}</span>))}
+    </p>
+  );
 }

@@ -1,12 +1,13 @@
 import { z } from "zod";
 import type { Database } from "./crud-table";
 import { createConversation, createMessage, getMessages } from "./llm";
-import type { AgentSchema, MessageSchema } from "./schemas";
-import { getColumns } from "./schemas";
+import { ANSWER, instructions, tablesPrompt, tag, toolsPrompt } from "./prompts";
+import type { AgentRuntime, AgentSchema, MessageSchema } from "./schemas";
+import { selection } from "./selection";
+import { storage } from "./storage";
 import { errorMessage, truncate } from "./utils";
 
-const MAX_STEPS = 10;
-const ANSWER = "answer";
+const MAX_STEPS = 12;
 
 const callsSchema = z
   .array(z.object({ name: z.string(), args: z.record(z.string(), z.unknown()).default({}) }))
@@ -46,19 +47,31 @@ export async function runAgent({
     onConversation?.(conversationId);
   }
 
+  const runtime: AgentRuntime = {
+    agent,
+    db,
+    conversationId,
+    state: (await storage.settings.get()).agentState[agent.name] ?? {},
+    isShared: selection.isShared,
+  };
+  const extra = await agent.context?.(runtime);
+
   let content = [
     instructions(agent),
     tag("tools", toolsPrompt(agent)),
-    tag("tables", tablesPrompt(agent, db)),
+    extra && tag("context", extra),
+    tag("tables", tablesPrompt(runtime)),
     tag("user_message", text),
-  ].join("\n\n");
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 
   for (let step = 0; step < MAX_STEPS; step++) {
     await createMessage({ conversationId, content, model });
     const reply = (await getMessages({ conversationId })).at(-1);
     onStep?.();
 
-    const results = await runCalls(agent, db, reply?.content ?? "");
+    const results = await runCalls(runtime, reply?.content ?? "");
     if (typeof results === "string") return results;
     content = [instructions(agent), tag("tool_results", JSON.stringify(results))].join("\n\n");
   }
@@ -66,12 +79,12 @@ export async function runAgent({
 }
 
 /** Returns the final answer, or the tool results to send back. */
-async function runCalls(agent: AgentSchema, db: Database, reply: string) {
+async function runCalls(runtime: AgentRuntime, reply: string) {
   let calls: ToolCall[];
   try {
     calls = parseCalls(reply);
   } catch (error) {
-    return [{ tool: "parser", ok: false, error: `Invalid response: ${errorMessage(error)}` }];
+    return [{ tool: "parser", ok: false, error: `Invalid response: ${errorMessage(error)}. Reply with the JSON format only.` }];
   }
 
   const answer = calls.find((call) => call.name === ANSWER);
@@ -82,9 +95,9 @@ async function runCalls(agent: AgentSchema, db: Database, reply: string) {
   const results: ToolResult[] = [];
   for (const call of calls) {
     try {
-      const tool = agent.tools.find((t) => t.name === call.name);
+      const tool = runtime.agent.tools.find((t) => t.name === call.name);
       if (!tool) throw new Error(`Unknown tool "${call.name}"`);
-      results.push({ tool: call.name, ok: true, result: await tool.execute(call.args, { db, agent }) });
+      results.push({ tool: call.name, ok: true, result: await tool.execute(call.args, runtime) });
     } catch (error) {
       results.push({ tool: call.name, ok: false, error: errorMessage(error) });
     }
@@ -98,57 +111,6 @@ function parseCalls(reply: string): ToolCall[] {
   const data = JSON.parse(json);
   return callsSchema.parse(Array.isArray(data) ? data : data.tools);
 }
-
-const tag = (name: string, body: string) => `<${name}>\n${body}\n</${name}>`;
-
-const instructions = (agent: AgentSchema) =>
-  [
-    tag(
-      "general_instructions",
-      `You are an assistant inside a spreadsheet app. Each table is an Excel file kept in sync with your edits.
-Today is ${new Date().toLocaleDateString("en-CA")}.
-Reply ONLY with a single JSON object, no prose and no code fences:
-{"tools":[{"name":"<tool name>","args":{...}}]}
-- You may call several tools in one reply; they run in order and you receive all results in the next message.
-- "${ANSWER}" ends your turn: use it alone, once your work is done, to reply to the user.
-- Every row has a unique integer "id" (managed by the app) and a unique "name".
-- Values: "text" is plain text with \\n line breaks and **bold**; "option" must be one of the listed options; "multiple" columns take an array; dates are YYYY-MM-DD; use null for empty values.
-- If a tool fails, fix the call and retry, or explain the problem to the user.`,
-    ),
-    tag("agent_instructions", `${agent.description}\n${agent.prompt}`),
-  ].join("\n\n");
-
-const toolsPrompt = (agent: AgentSchema) =>
-  agent.tools
-    .map(
-      (tool) =>
-        `- ${tool.name}: ${tool.description}\n` +
-        Object.entries(tool.parameters)
-          .map(([name, type]) => `    ${name}: ${type}`)
-          .join("\n"),
-    )
-    .join("\n");
-
-const tablesPrompt = (agent: AgentSchema, db: Database) =>
-  agent.tables
-    .map(({ table, accessLevel }) => {
-      const columns = getColumns(table).map((column) =>
-        [
-          `  - ${column.name} (${column.dataType}${column.multiple ? ", multiple" : ""}${column.required ? ", required" : ""})`,
-          column.description,
-          column.options.length && `options: ${column.options.map((o) => o.name).join(" | ")}`,
-        ]
-          .filter(Boolean)
-          .join(" — "),
-      );
-      return [
-        `## ${table.name} (${accessLevel}) — ${table.description}`,
-        "Columns:",
-        ...columns,
-        `Rows: ${JSON.stringify(db.rows(table.name))}`,
-      ].join("\n");
-    })
-    .join("\n\n");
 
 /** How a stored message is shown in the chat (prompts and tool results are hidden). */
 export function displayMessage(message: MessageSchema):

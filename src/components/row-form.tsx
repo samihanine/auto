@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/components/ui/toast";
-import { OptionSelect } from "@/components/select-option";
+import { useDatabase } from "@/lib/hooks";
+import { OptionSelect, ReferenceSelect } from "@/components/select-option";
 import { RichText } from "@/components/rich-text";
 import { UploadImageInput } from "@/components/upload-image-input";
 
@@ -19,8 +20,11 @@ export function RowForm({
   onSave,
   onDelete,
   onCancel,
+  readOnly = false,
 }: {
   table: TableSchema;
+  /** Read-only table (same rights as the agent): fields are shown but not editable. */
+  readOnly?: boolean;
   /** null = new row */
   row: Row | null;
   onSave: (values: Values) => Promise<void>;
@@ -58,12 +62,13 @@ export function RowForm({
         <div className="min-w-0 flex-1">
           <p className="text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
             {table.name} {row && <span className="tabular-nums">· #{row.id}</span>}
+            {readOnly && <span className="ml-1.5 rounded bg-muted px-1.5 py-px normal-case">Read-only</span>}
           </p>
           <h2 className="truncate text-lg font-semibold tracking-tight">
             {String(values.name || "") || (row ? "Untitled" : "New row")}
           </h2>
         </div>
-        {row && (
+        {row && !readOnly && (
           <Button
             variant={confirmDelete ? "destructive" : "ghost"}
             size={confirmDelete ? "sm" : "icon-sm"}
@@ -81,7 +86,10 @@ export function RowForm({
         {table.columns.map((column) => (
           <div
             key={column.name}
-            className={cn("flex min-w-0 flex-col gap-1.5", column.dataType === "text" && "col-span-2")}
+            className={cn(
+              "flex min-w-0 flex-col gap-1.5",
+              ["text", "json"].includes(column.dataType) && "col-span-2",
+            )}
           >
             <span className="text-xs font-medium text-muted-foreground capitalize">
               {column.name}
@@ -90,6 +98,7 @@ export function RowForm({
             <FieldInput
               column={column}
               value={values[column.name] ?? null}
+              disabled={readOnly}
               onChange={(value) => setDraft((d) => ({ ...d, [column.name]: value }))}
             />
           </div>
@@ -115,28 +124,34 @@ function FieldInput({
   column,
   value,
   onChange,
+  disabled,
 }: {
   column: FieldSchema;
   value: CellValue;
   onChange: (value: CellValue) => void;
+  disabled: boolean;
 }) {
+  const db = useDatabase();
   const text = Array.isArray(value) ? value.join("; ") : value === null ? "" : String(value);
   const input = (props: React.ComponentProps<"input">) => (
     <Input
       value={text}
       onChange={(e) => onChange(column.multiple ? e.target.value.split(/\s*;\s*/) : e.target.value)}
-      className="rounded-xl"
+      className="rounded-xl disabled:opacity-80"
+      disabled={disabled}
       {...props}
     />
   );
 
+  if (column.reference)
+    return <ReferenceSelect db={db} column={column} value={value} onChange={onChange} disabled={disabled} />;
   switch (column.dataType) {
     case "option":
-      return <OptionSelect column={column} value={value} onChange={onChange} />;
+      return <OptionSelect column={column} value={value} onChange={onChange} disabled={disabled} />;
     case "text":
-      return <RichText value={text} onChange={onChange} />;
+      return <RichText value={text} onChange={onChange} readOnly={disabled} />;
     case "boolean":
-      return <Switch checked={value === true} onCheckedChange={onChange} />;
+      return <Switch checked={value === true} onCheckedChange={onChange} disabled={disabled} />;
     case "number":
       return input({
         type: "number",
@@ -146,10 +161,17 @@ function FieldInput({
       return input({ type: "date" });
     case "json":
       return (
-        <Textarea value={text} onChange={(e) => onChange(e.target.value)} className="font-mono text-xs" />
+        <Textarea
+          value={text}
+          onChange={(e) => onChange(e.target.value)}
+          readOnly={disabled}
+          className="max-h-72 font-mono text-xs"
+        />
       );
     case "image":
-      return <UploadImageInput value={value ? String(value) : null} onChange={onChange} />;
+      return (
+        <UploadImageInput value={value ? String(value) : null} onChange={onChange} readOnly={disabled} />
+      );
     default:
       return input({ type: column.dataType === "url" ? "url" : "text" });
   }

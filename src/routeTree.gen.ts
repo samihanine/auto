@@ -10,11 +10,23 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ImportDatasetRouteImport } from './routes/import-dataset'
+import { Route as ImportReportRouteImport } from './routes/import-report'
 import { Route as SettingsRouteImport } from './routes/settings'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ImportDatasetRoute = ImportDatasetRouteImport.update({
+  id: '/import-dataset',
+  path: '/import-dataset',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ImportReportRoute = ImportReportRouteImport.update({
+  id: '/import-report',
+  path: '/import-report',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsRoute = SettingsRouteImport.update({
@@ -25,27 +37,35 @@ const SettingsRoute = SettingsRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/import-dataset': typeof ImportDatasetRoute
+  '/import-report': typeof ImportReportRoute
   '/settings': typeof SettingsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/import-dataset': typeof ImportDatasetRoute
+  '/import-report': typeof ImportReportRoute
   '/settings': typeof SettingsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/import-dataset': typeof ImportDatasetRoute
+  '/import-report': typeof ImportReportRoute
   '/settings': typeof SettingsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/settings'
+  fullPaths: '/' | '/import-dataset' | '/import-report' | '/settings'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/settings'
-  id: '__root__' | '/' | '/settings'
+  to: '/' | '/import-dataset' | '/import-report' | '/settings'
+  id: '__root__' | '/' | '/import-dataset' | '/import-report' | '/settings'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ImportDatasetRoute: typeof ImportDatasetRoute
+  ImportReportRoute: typeof ImportReportRoute
   SettingsRoute: typeof SettingsRoute
 }
 
@@ -56,6 +76,20 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/import-dataset': {
+      id: '/import-dataset'
+      path: '/import-dataset'
+      fullPath: '/import-dataset'
+      preLoaderRoute: typeof ImportDatasetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/import-report': {
+      id: '/import-report'
+      path: '/import-report'
+      fullPath: '/import-report'
+      preLoaderRoute: typeof ImportReportRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings': {
@@ -70,6 +104,8 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ImportDatasetRoute: ImportDatasetRoute,
+  ImportReportRoute: ImportReportRoute,
   SettingsRoute: SettingsRoute,
 }
 export const routeTree = rootRouteImport

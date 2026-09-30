@@ -68,13 +68,13 @@ const newMessage = (
 });
 
 async function complete(model: string, history: MessageSchema[]) {
-  const { openaiKey } = await storage.settings.get();
-  if (!openaiKey) throw new Error("Missing OpenAI API key — add it in Settings.");
+  const { aiKey } = await storage.settings.get();
+  if (!aiKey) throw new Error("Missing AI key — add it in Settings.");
 
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${openaiKey}`,
+      Authorization: `Bearer ${aiKey}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({

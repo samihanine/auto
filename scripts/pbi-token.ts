@@ -1,6 +1,7 @@
 /**
  * Gets a Power BI access token (device code sign-in, generic "organizations" tenant) and opens
- * the app so it is saved into config.xlsx automatically.
+ * the app on /settings?pbiToken=… so the token is saved automatically.
+ * (The device code endpoint refuses browser calls — CORS — hence this small Node script.)
  *
  *   bun run pbi-token            reuse the cached session when possible
  *   bun run pbi-token --login    force a new sign-in
@@ -11,10 +12,9 @@ import { spawn } from "node:child_process";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { setTimeout as sleep } from "node:timers/promises";
 
-const CLIENT_ID = "ea0616ba-638b-4df5-95b9-636659ae5121"; // Power BI public client (no app registration needed)
-const LOGIN = "https://login.microsoftonline.com/organizations/oauth2/v2.0";
-const SCOPE =
-  "https://analysis.windows.net/powerbi/api/.default offline_access";
+import { PBI_CLIENT_ID as CLIENT_ID, PBI_SCOPE as SCOPE, PBI_TENANT_ID } from "../src/lib/constants";
+
+const LOGIN = `https://login.microsoftonline.com/${PBI_TENANT_ID}/oauth2/v2.0`;
 const CACHE = ".local/pbi-refresh-token";
 const APP_URL = process.env.APP_URL ?? "http://localhost:3000";
 
@@ -108,8 +108,6 @@ if (tokens.refresh_token) {
   await writeFile(CACHE, tokens.refresh_token);
 }
 
-const url = `${APP_URL}/settings/config?powerbiToken=${encodeURIComponent(tokens.access_token ?? "")}`;
+const url = `${APP_URL}/settings?pbiToken=${encodeURIComponent(tokens.access_token ?? "")}`;
 open(url);
-console.log(
-  `Power BI token ready (valid ~1 h). Opened ${APP_URL}/settings/config to save it.`,
-);
+console.log(`Power BI token ready (valid ~1 h). Opened ${APP_URL}/settings to save it.`);

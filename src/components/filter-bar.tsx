@@ -1,11 +1,11 @@
-import { ChevronDownIcon, LayoutGridIcon, PlusIcon, SearchIcon, TableIcon, XIcon } from "lucide-react";
+import { ChevronDownIcon, DownloadIcon, LayoutGridIcon, PlusIcon, SearchIcon, TableIcon, XIcon } from "lucide-react";
 import type { FieldSchema, Row, TableSchema } from "@/lib/schemas";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { OptionBadge } from "@/components/select-option";
+import { OptionBadge } from "@/components/option-badge";
 
 export type ViewMode = "table" | "cards";
 export type Filters = { search: string; options: Record<string, string[]> };
@@ -34,6 +34,7 @@ export function FilterBar({
   onViewChange,
   count,
   onAdd,
+  onDownload,
 }: {
   table: TableSchema;
   filters: Filters;
@@ -41,7 +42,9 @@ export function FilterBar({
   view: ViewMode;
   onViewChange: (view: ViewMode) => void;
   count: number;
-  onAdd: () => void;
+  /** Omitted for read-only tables. */
+  onAdd?: () => void;
+  onDownload: () => void;
 }) {
   const optionColumns = table.columns.filter((column) => column.dataType === "option");
   const active = filters.search || Object.values(filters.options).some((s) => s.length);
@@ -90,9 +93,14 @@ export function FilterBar({
             <LayoutGridIcon />
           </ToggleGroupItem>
         </ToggleGroup>
-        <Button size="icon-sm" onClick={onAdd} aria-label="New row">
-          <PlusIcon />
+        <Button variant="ghost" size="icon-sm" onClick={onDownload} aria-label="Download xlsx" title="Download .xlsx">
+          <DownloadIcon />
         </Button>
+        {onAdd && (
+          <Button size="icon-sm" onClick={onAdd} aria-label="New row">
+            <PlusIcon />
+          </Button>
+        )}
       </div>
     </div>
   );

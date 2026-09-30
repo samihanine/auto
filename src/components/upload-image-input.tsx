@@ -12,9 +12,11 @@ import { ImagePreview } from "@/components/image-preview";
 export function UploadImageInput({
   value,
   onChange,
+  readOnly = false,
 }: {
   value: string | null;
   onChange: (value: string | null) => void;
+  readOnly?: boolean;
 }) {
   const db = useDatabase();
   const [settings] = useSettings();
@@ -52,6 +54,13 @@ export function UploadImageInput({
   };
 
   const browse = () => fileInput.current?.click();
+
+  if (readOnly)
+    return value ? (
+      <ImagePreview value={value} className="aspect-video w-full rounded-xl" />
+    ) : (
+      <p className="text-sm text-muted-foreground">—</p>
+    );
 
   return (
     <div className="flex flex-col gap-1.5">

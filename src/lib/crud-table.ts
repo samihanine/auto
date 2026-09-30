@@ -71,6 +71,17 @@ export class Database {
     );
   }
 
+  /** Inserts or updates rows matched on the table key (e.g. a Power BI id). */
+  async upsert(name: string, inputs: RowInput[]) {
+    const { key } = this.table(name);
+    const byKey = new Map(this.rows(name).map((row) => [String(row[key]), row]));
+    const existing = inputs.filter((input) => byKey.has(String(input[key])));
+    const created = inputs.filter((input) => !byKey.has(String(input[key])));
+    if (existing.length)
+      await this.update(name, existing.map((input) => ({ ...byKey.get(String(input[key])), ...input })));
+    if (created.length) await this.insert(name, created);
+  }
+
   async delete(name: string, ids: number[]) {
     const table = this.table(name);
     const missing = ids.filter((id) => !this.rows(name).some((row) => row.id === id));
@@ -83,7 +94,8 @@ export class Database {
   private async commit(table: TableSchema, rows: Row[]) {
     const names = new Set<string>();
     for (const row of rows) {
-      const key = row.name.trim().toLowerCase();
+      const key = String(row.name ?? "").trim().toLowerCase();
+      if (!key) continue; // rows typed in Excel without a name
       if (names.has(key)) throw new Error(`Duplicate name "${row.name}" in "${table.name}"`);
       names.add(key);
     }

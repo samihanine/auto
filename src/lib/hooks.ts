@@ -47,3 +47,17 @@ export function useImageUrl(value: string | null | undefined) {
   }, [db, value]);
   return url;
 }
+
+/** State of an agent's custom tabs (active dataset, report…), persisted in settings. */
+export function useAgentState(agent: string) {
+  const [settings, updateSettings] = useSettings();
+  const state = settings.agentState[agent] ?? {};
+  const update = useCallback(
+    async (patch: Record<string, string>) => {
+      const current = (await storage.settings.get()).agentState;
+      await updateSettings({ agentState: { ...current, [agent]: { ...current[agent], ...patch } } });
+    },
+    [agent, updateSettings],
+  );
+  return [state, update] as const;
+}

@@ -1,31 +1,14 @@
 import { tableSchema } from "@/lib/schemas";
 
 export const reportViewerTable = tableSchema.decode({
-  name: "reportVisual",
-  description: "A table for report visuals",
+  name: "reportViewer",
+  description: "Live state of the embedded report for a conversation: editing this row drives the viewer (page, filters)",
   columns: [
-    {
-      name: "powerBiPageId",
-      description: "The ID of the page",
-      dataType: "string",
-      required: true,
-    },
-    {
-      name: "powerBiVisualId",
-      description: "The ID of the visual",
-      dataType: "string",
-      required: false,
-    },
-    {
-      name: "filters",
-      description: "The filters of the visual",
-      dataType: "text",
-      multiple: true,
-    },
-  ],
-  config: [
-    {
-      name: "Current Power BI Page ID",
-    },
+    { name: "name", dataType: "string", required: true },
+    { name: "conversationId", description: "Conversation this viewer state belongs to", dataType: "string", required: true },
+    { name: "powerBiReportId", dataType: "string", reference: "pbiReport", required: true },
+    { name: "powerBiPageId", description: "Page to display", dataType: "string", reference: "reportPage" },
+    { name: "pageFilters", description: "Filters applied to the current page: [{\"field\":\"Table[Column]\",\"operator\":\"In\",\"values\":[…]}] ([] clears them)", dataType: "json" },
+    { name: "visualFilters", description: "Filters per visual: {\"<powerBiVisualId>\":[{\"field\":…,\"operator\":…,\"values\":[…]}]}", dataType: "json" },
   ],
 });

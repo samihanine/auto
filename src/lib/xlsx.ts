@@ -57,8 +57,9 @@ export async function readTable(dir: FileSystemDirectoryHandle, table: TableSche
       columns.map((column) => [column.name, fromCell(raw(column.name), column)]),
     ) as Row;
     const extra = Object.fromEntries(extraHeaders.map((header) => [header, raw(header)]));
+    // Booleans read as false when empty: they alone don't make a row (e.g. the placeholder row).
     const hasData =
-      columns.some((column) => !isEmpty(row[column.name])) ||
+      columns.some((column) => column.dataType !== "boolean" && !isEmpty(row[column.name])) ||
       extraHeaders.some((header) => cellText(extra[header]) !== "");
     if (hasData) entries.push({ row, extra });
   }
@@ -146,7 +147,7 @@ function cellText(value: ExcelJS.CellValue, keepBold = false): string {
       .map((run) => (keepBold && run.font?.bold ? `**${run.text}**` : run.text))
       .join("");
   if ("text" in value) return String(value.text);
-  if ("result" in value) return cellText(value.result as ExcelJS.CellValue);
+  if ("result" in value) return cellText(value.result);
   return "";
 }
 

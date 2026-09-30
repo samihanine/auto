@@ -52,3 +52,20 @@ export function resolveImage(dir: FileSystemDirectoryHandle, value: string) {
     );
   return urls.get(key)!;
 }
+
+/** Data URL of a stored image (for PPTX / PDF exports). */
+export async function imageDataUrl(dir: FileSystemDirectoryHandle, value: string) {
+  const url = await resolveImage(dir, value);
+  if (!url) return null;
+  try {
+    const blob = await (await fetch(url)).blob();
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null; // remote image blocked by CORS
+  }
+}

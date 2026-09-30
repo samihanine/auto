@@ -40,6 +40,7 @@
     "marked": "^18.0.14",
     "pdfmake": "^0.3.11",
     "powerbi-client": "^2.24.1",
+    "powerbi-report-authoring": "^3.0.0",
     "pptxgenjs": "^4.0.1",
     "react": "^19.2.8",
     "react-day-picker": "^10.0.1",

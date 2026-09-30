@@ -1,4 +1,4 @@
-import type { ToolContext } from "@/lib/schemas";
+import type { Row, ToolContext } from "@/lib/schemas";
 
 /** Resolves a table the agent may write to. */
 export function writableTable({ agent }: ToolContext, name: string) {
@@ -8,8 +8,11 @@ export function writableTable({ agent }: ToolContext, name: string) {
   return access.table;
 }
 
-/** Tool response after a write: the whole up-to-date table. */
-export const tableContent = ({ db }: ToolContext, name: string) => ({
-  table: name,
-  rows: db.rows(name),
-});
+/** Runs the agent's afterWrite hook, then returns the shared rows of the up-to-date table. */
+export async function afterWrite(ctx: ToolContext, name: string, changed: Row[]) {
+  await ctx.agent.afterWrite?.(name, changed, ctx);
+  return {
+    table: name,
+    rows: ctx.db.rows(name).filter((row) => ctx.isShared(name, row.id)),
+  };
+}

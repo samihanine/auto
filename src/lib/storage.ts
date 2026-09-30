@@ -3,8 +3,8 @@ import { conversationSchema, messageSchema, settingsSchema } from "./schemas";
 
 /** Swap this driver to move storage elsewhere (IndexedDB, REST API…). */
 export interface StorageDriver {
-  getItem(key: string): Promise<string | null>;
-  setItem(key: string, value: string): Promise<void>;
+  getItem: (key: string) => Promise<string | null>;
+  setItem: (key: string, value: string) => Promise<void>;
 }
 
 export const localStorageDriver: StorageDriver = {
@@ -14,12 +14,12 @@ export const localStorageDriver: StorageDriver = {
 
 const PREFIX = "atelier:";
 
-function collection<S extends z.ZodType<{ id: string }>>(
+function collection<TSchema extends z.ZodType<{ id: string }>>(
   driver: StorageDriver,
   key: string,
-  schema: S,
+  schema: TSchema,
 ) {
-  type Item = z.output<S>;
+  type Item = z.output<TSchema>;
   const read = async (): Promise<Item[]> =>
     z.array(schema).parse(JSON.parse((await driver.getItem(PREFIX + key)) ?? "[]"));
   const write = (items: Item[]) =>
@@ -41,8 +41,8 @@ function collection<S extends z.ZodType<{ id: string }>>(
   };
 }
 
-function value<S extends z.ZodType<object>>(driver: StorageDriver, key: string, schema: S) {
-  type Value = z.output<S>;
+function value<TSchema extends z.ZodType<object>>(driver: StorageDriver, key: string, schema: TSchema) {
+  type Value = z.output<TSchema>;
   const get = async (): Promise<Value> =>
     schema.parse(JSON.parse((await driver.getItem(PREFIX + key)) ?? "{}"));
   return {

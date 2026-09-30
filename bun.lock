@@ -29,6 +29,7 @@
         "marked": "^18.0.14",
         "pdfmake": "^0.3.11",
         "powerbi-client": "^2.24.1",
+        "powerbi-report-authoring": "^3.0.0",
         "pptxgenjs": "^4.0.1",
         "react": "^19.2.8",
         "react-day-picker": "^10.0.1",
@@ -1320,6 +1321,8 @@
 
     "powerbi-models": ["powerbi-models@2.1.1", "", {}, "sha512-fF+ck7NblejxQp3z4Y5cgYSTo8sghUyBodvPRn8eqOifavp4FNb9TC7q59sXKEvCWhpGsYuNAiHPwmcqGXL+hw=="],
 
+    "powerbi-report-authoring": ["powerbi-report-authoring@3.0.0", "", { "dependencies": { "http-post-message": "^0.2", "powerbi-client": "^2.13", "powerbi-models": "^2.0.1" } }, "sha512-vSAhcicbxTtVkHFfBAfd+Msju0Roclr2bvIiy8NnhiLXyG0iUeYsGNmWmGW0nXrGlDMAMJgQTUEi1rNHDv8K0w=="],
+
     "powerbi-router": ["powerbi-router@0.1.5", "", { "dependencies": { "es6-promise": "^3.2.1", "route-recognizer": "^0.1.11" } }, "sha512-DFJCKxwh/DqMZXtHSo6xZl87mbRviZGn4P7Oi2rT0L4HMI4AjnWIrwg0JCSM7ymBzYnNe5UmrsCaf2Upur5RQA=="],
 
     "powershell-utils": ["powershell-utils@0.2.1", "", {}, "sha512-C+y9x90UElAddDZmV4qOx9W53B61PO7cIqWz2dQsWlwswuq4mr8NEwytdGKboYbQlGZ3awrkTeNvcZiZNHnQ8A=="],
@@ -1767,6 +1770,8 @@
     "parse-entities/@types/unist": ["@types/unist@2.0.11", "", {}, "sha512-CmBKiL6NNo/OqgmMn95Fk9Whlp2mtvIv+KNpQKN2F4SjvrEesubTRWGYSg+BnWZOnlCaSTU1sMpsBOzgbYhnsA=="],
 
     "pkg-up/find-up": ["find-up@3.0.0", "", { "dependencies": { "locate-path": "^3.0.0" } }, "sha512-1yD6RmLI1XBfxugvORwlck6f75tYL+iR0jqwsOrOxMZyGYqUuDhJ0l4AXdO1iX/FTs9cBAMEk1gWSEx1kSbylg=="],
+
+    "powerbi-report-authoring/http-post-message": ["http-post-message@0.2.5", "", { "dependencies": { "es6-promise": "^3.2.1" } }, "sha512-3UHhrp/DAq7BcIPVlp1J7cz1L5dA+JMJDhM5gLKCYyAdKWac5anwJk68EXFO9f+eTVM3VRp2bA3Z/dZSslfKHA=="],
 
     "prompts/kleur": ["kleur@3.0.3", "", {}, "sha512-eTIzlVOSUR+JxdDFepEYcBMtZ9Qqdef+rnzWdRZuMbOywu5tO2w2N7rqjoANZ5k9vywhL6Br1VRjUIgTQx4E8w=="],
 
