@@ -1,0 +1,35 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ],
+      "@repo/ui/*": [
+        "../../packages/ui/src/*"
+      ],
+      "@repo/microsoft-auth/*": [
+        "../../packages/microsoft-auth/src/*"
+      ],
+      "@repo/storage": [
+        "../../packages/storage/src/index.ts"
+      ],
+      "@repo/storage/*": [
+        "../../packages/storage/src/*"
+      ],
+      "@repo/tables": [
+        "../../packages/tables/src/index.ts"
+      ],
+      "@repo/tables/*": [
+        "../../packages/tables/src/*"
+      ],
+      "@repo/config": [
+        "../../packages/config/src/constants.ts"
+      ]
+    }
+  },
+  "include": [
+    "src",
+    "vite.config.ts"
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "name": "@repo/tables",
+  "private": true,
+  "type": "module",
+  "version": "0.0.0",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@repo/microsoft-auth": "workspace:*",
+    "@repo/ui": "workspace:*",
+    "zod": "^4.6.2"
+  }
+}

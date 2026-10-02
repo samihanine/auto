@@ -30,3 +30,9 @@ Thumbs.db
 .idea
 *.swp
 *.swo
+
+# Exported apps (bun run export-src / export-html)
+exports
+.turbo
+.claude
+AGENTS.md

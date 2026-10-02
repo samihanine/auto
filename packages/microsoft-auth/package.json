@@ -1,0 +1,15 @@
+{
+  "name": "@repo/microsoft-auth",
+  "private": true,
+  "type": "module",
+  "version": "0.0.0",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "proxy": "bun proxy.ts"
+  },
+  "dependencies": {
+    "@repo/ui": "workspace:*",
+    "lucide-react": "^1.45.0",
+    "react": "^19.2.8"
+  }
+}

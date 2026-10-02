@@ -1,0 +1,32 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "paths": {
+      "@repo/ui/*": [
+        "../ui/src/*"
+      ],
+      "@repo/microsoft-auth/*": [
+        "../microsoft-auth/src/*"
+      ],
+      "@repo/storage": [
+        "../storage/src/index.ts"
+      ],
+      "@repo/storage/*": [
+        "../storage/src/*"
+      ],
+      "@repo/tables": [
+        "../tables/src/index.ts"
+      ],
+      "@repo/tables/*": [
+        "../tables/src/*"
+      ],
+      "@repo/config": [
+        "../config/src/constants.ts"
+      ]
+    }
+  },
+  "include": [
+    "src",
+    "*.ts"
+  ]
+}
